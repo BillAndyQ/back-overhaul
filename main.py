@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from src.connection_db import get_db
@@ -30,7 +31,8 @@ app.include_router(route_dashboard, prefix="/api/v1/dashboard", tags=["Dashboard
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Origen de tu app React
+    
+    allow_origins=["https://app.overhaulmining.com", "http://localhost:3000"], # Origen de tu app React
     allow_credentials=True,
     allow_methods=["*"], # Permite todos los métodos (POST, GET, etc.)
     allow_headers=["*"], # Permite todos los encabezados
@@ -88,13 +90,13 @@ def get_all_ot_personas(db: Session = Depends(get_db)):
     return data
 
 @app.get("/api/v1/ot-personas/{n_ot}")
-def get_all_ot_personas(n_ot, db: Session = Depends(get_db)):
+def get_all_ot_personas(n_ot: str, db: Session = Depends(get_db)):
     repo = EquipoRepository(db)
     data = repo.get_ot_persona_by_n_ot(n_ot)
     return data
 
 @app.post("/api/v1/ot-personas")
-async def registrar_persona(datos: PersonaRequest, db: Session = Depends(get_db)):
+def registrar_persona(datos: PersonaRequest, db: Session = Depends(get_db)):
     repo = EquipoRepository(db)
     persona_creada = repo.crear_persona(datos)
     
@@ -106,7 +108,7 @@ async def registrar_persona(datos: PersonaRequest, db: Session = Depends(get_db)
     return {"message": "Persona registrada con éxito", "id": persona_creada.id}
 
 @app.put("/api/v1/ot-personas/{n_ot}")
-async def actualizar_persona(
+def actualizar_persona(
     n_ot: str, 
     datos: PersonaRequest, 
     db: Session = Depends(get_db)
@@ -121,7 +123,7 @@ async def actualizar_persona(
     return {"message": "Persona actualizada con éxito"}
 
 @app.delete("/api/v1/ot-personas/{n_ot}")
-async def actualizar_persona(
+def actualizar_persona(
     n_ot: str, 
     db: Session = Depends(get_db)
 ):
@@ -176,7 +178,6 @@ def get_all_ot_equipos_join(db: Session = Depends(get_db)):
     return data
 
 
-
 @app.post("/api/v1/ot-equipos/{n_ot}/equipo")
 async def registrar(
     n_ot: str,
@@ -197,7 +198,7 @@ async def registrar(
     repo = EquipoRepository(db)
     
     # 1. Obtener ID de la OT
-    id_ot_equipo = repo.get_id_of_ot(n_ot)
+    id_ot_equipo = await run_in_threadpool(repo.get_id_of_ot, n_ot)
     if not id_ot_equipo:
         raise HTTPException(status_code=404, detail="OT no encontrada")
 
@@ -225,7 +226,7 @@ async def registrar(
             )
 
     try:
-        equipo = repo.crear_equipo(datos_dict)
+        equipo = await run_in_threadpool(repo.crear_equipo, datos_dict)
         equipo_id = equipo.id
         update_data = {}
         if informeCampo:
@@ -237,8 +238,8 @@ async def registrar(
         if certificado:
             update_data["certificado_url"] = await save_file(certificado, n_ot, equipo_id, "certificado")
             
-        exito = repo.actualizar_equipo(equipo_id, update_data)
-        
+        exito = await run_in_threadpool(repo.actualizar_equipo, equipo_id, update_data)
+
         return {"id": equipo.id, "message": "Equipo creado con éxito"}
     
     except Exception as e:
@@ -296,7 +297,7 @@ async def actualizar(
     
     # 3. Llamar al repositorio para actualizar
     try:
-        exito = repo.actualizar_equipo(equipo_id, update_data)
+        exito = await run_in_threadpool(repo.actualizar_equipo, equipo_id, update_data)
         if not exito:
             raise HTTPException(status_code=404, detail="Equipo no encontrado")
         return {"message": "Equipo actualizado con éxito"}
@@ -305,7 +306,7 @@ async def actualizar(
     
     
 @app.delete("/api/v1/ot-equipos/{n_ot}/equipo/{equipo_id}")
-async def delete_equipo(equipo_id : int,db: Session = Depends(get_db)):
+def delete_equipo(equipo_id : int,db: Session = Depends(get_db)):
     repo = EquipoRepository(db)
     repo.delete_equipo(equipo_id)
     return {
@@ -314,7 +315,7 @@ async def delete_equipo(equipo_id : int,db: Session = Depends(get_db)):
     
 # Eliminar orde de trabajo de equipo
 @app.delete("/api/v1/ot-equipos/{equipo_id}")
-async def delete_ot_equipo(equipo_id : int,db: Session = Depends(get_db)):
+def delete_ot_equipo(equipo_id : int,db: Session = Depends(get_db)):
     repo = EquipoRepository(db)
     repo.delete_ot_equipo(equipo_id)
     return {

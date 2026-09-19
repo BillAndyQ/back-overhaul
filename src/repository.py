@@ -148,9 +148,10 @@ class EquipoRepository:
             
             self.db.commit()
             return True
-        
-        except Exception:
+
+        except Exception as e:
             self.db.rollback()
+            print(f"Error al crear OT {n_ot}: {e}")
             return False
 
     def create_ot_init_persona(self, n_ot) -> bool:
@@ -163,8 +164,9 @@ class EquipoRepository:
             
             self.db.commit()
             return True
-        except Exception:
+        except Exception as e:
             self.db.rollback()
+            print(f"Error al crear OT de persona {n_ot}: {e}")
             return False
 
     # --- Métodos ORM para 'equipos' ---

@@ -1,9 +1,8 @@
-import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from src.db_url import get_async_database_url
 
-# 1. Cambia el prefijo de la URL: si es postgres, usa postgresql+asyncpg://
-# Asegúrate de que el driver (asyncpg) esté instalado
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://root:password@localhost:5432/postgres")
+# 1. Siempre driver asyncpg, aunque DATABASE_URL sea postgresql://
+DATABASE_URL = get_async_database_url()
 
 # 2. Usa create_async_engine
 engine = create_async_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
