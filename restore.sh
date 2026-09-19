@@ -12,7 +12,7 @@ echo "PostgreSQL está listo."
 
 echo "Restaurando backup..."
 
-cat backup_postgres.dump | docker exec -i postgres_db pg_restore \
+cat backup_postgres_full.dump | docker exec -i postgres_db pg_restore \
     -U root \
     -d postgres \
     --clean \
